@@ -1,0 +1,752 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RAFTAAR - Advanced Real-Time Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+            overflow-x: hidden;
+            position: relative;
+            background: #000;
+        }
+
+        /* Dynamic Weather Background */
+        .weather-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            opacity: 0;
+            transition: opacity 3s ease-in-out;
+        }
+
+        .weather-bg.active {
+            opacity: 1;
+        }
+
+        /* Sunny Day */
+        .sunny {
+            background: linear-gradient(to bottom, #87CEEB 0%, #FFE4B5 50%, #FFD700 100%);
+        }
+
+        /* Cloudy */
+        .cloudy {
+            background: linear-gradient(to bottom, #757F9A 0%, #D7DDE8 100%);
+        }
+
+        /* Rainy */
+        .rainy {
+            background: linear-gradient(to bottom, #2C3E50 0%, #3498DB 50%, #2C3E50 100%);
+        }
+
+        /* Sunset */
+        .sunset {
+            background: linear-gradient(to bottom, #FF512F 0%, #F09819 30%, #FF6B6B 60%, #4A148C 100%);
+        }
+
+        /* Night */
+        .night {
+            background: linear-gradient(to bottom, #0F2027 0%, #203A43 50%, #2C5364 100%);
+        }
+
+        /* Aurora */
+        .aurora {
+            background: linear-gradient(to bottom, #00C9FF 0%, #92FE9D 25%, #FC466B 50%, #3F5EFB 100%);
+        }
+
+        /* Animated particles overlay */
+        .particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .particle {
+            position: absolute;
+            width: 2px;
+            height: 2px;
+            background: rgba(255, 255, 255, 0.5);
+            border-radius: 50%;
+            animation: float 20s infinite linear;
+        }
+
+        @keyframes float {
+            from {
+                transform: translateY(100vh) translateX(0);
+                opacity: 0;
+            }
+            10% {
+                opacity: 1;
+            }
+            90% {
+                opacity: 1;
+            }
+            to {
+                transform: translateY(-100vh) translateX(100px);
+                opacity: 0;
+            }
+        }
+
+        /* Header */
+        .header {
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(20px);
+            padding: 25px;
+            position: relative;
+            z-index: 100;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .header h1 {
+            text-align: center;
+            color: #ffffff;
+            font-size: 3em;
+            font-weight: 900;
+            letter-spacing: 5px;
+            text-transform: uppercase;
+            background: linear-gradient(45deg, #FFD700, #FF6B6B, #4A90E2, #50E3C2, #FFD700);
+            background-size: 200% auto;
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: shine 3s linear infinite;
+            text-shadow: 0 0 30px rgba(255, 255, 255, 0.3);
+        }
+
+        @keyframes shine {
+            to {
+                background-position: 200% center;
+            }
+        }
+
+        /* Main Container */
+        .container {
+            display: flex;
+            gap: 20px;
+            padding: 20px;
+            max-width: 1600px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 10;
+            height: calc(100vh - 120px);
+        }
+
+        /* Left Panel - Features */
+        .left-panel {
+            width: 250px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .feature-item {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            font-weight: 700;
+            font-size: 1.1em;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .feature-item::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background: radial-gradient(circle, rgba(255,255,255,0.3) 0%, transparent 70%);
+            transition: all 0.5s;
+            transform: translate(-50%, -50%);
+        }
+
+        .feature-item:hover::before {
+            width: 300px;
+            height: 300px;
+        }
+
+        .feature-item:hover {
+            transform: translateX(10px) scale(1.05);
+            background: rgba(255, 255, 255, 0.2);
+            box-shadow: 0 10px 40px rgba(255, 255, 255, 0.2),
+                        inset 0 0 20px rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.4);
+        }
+
+        /* Center Panel - Map */
+        .center-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .map-container {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            overflow: hidden;
+            position: relative;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3),
+                        inset 0 0 20px rgba(255, 255, 255, 0.1);
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+        }
+
+        .location-info {
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 15px;
+            color: white;
+            font-size: 1em;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .location-info strong {
+            color: #FFD700;
+            font-size: 1.2em;
+        }
+
+        /* Right Panel - Camera */
+        .right-panel {
+            width: 350px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .camera-container {
+            height: 350px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            overflow: hidden;
+            position: relative;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3),
+                        inset 0 0 20px rgba(255, 255, 255, 0.1);
+        }
+
+        #webcam {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .camera-off {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, rgba(0,0,0,0.8) 0%, rgba(50,50,50,0.8) 100%);
+            color: white;
+            font-size: 1.5em;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .camera-icon {
+            font-size: 60px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 0.5; }
+            50% { transform: scale(1.1); opacity: 1; }
+        }
+
+        .camera-btn {
+            width: 100%;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 15px;
+            font-size: 1.2em;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .camera-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            transition: left 0.5s;
+        }
+
+        .camera-btn:hover::before {
+            left: 100%;
+        }
+
+        .camera-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 30px rgba(118, 75, 162, 0.5);
+        }
+
+        .camera-btn.off {
+            background: linear-gradient(135deg, #ff6b6b 0%, #c92a2a 100%);
+        }
+
+        /* Floating Aircraft Animation */
+        .aircraft {
+            position: fixed;
+            font-size: 40px;
+            z-index: 50;
+            filter: drop-shadow(0 5px 10px rgba(0,0,0,0.3));
+            cursor: pointer;
+            transition: transform 0.3s;
+        }
+
+        .aircraft:hover {
+            transform: scale(1.2);
+        }
+
+        .aircraft-1 {
+            animation: fly1 25s linear infinite;
+        }
+
+        .aircraft-2 {
+            animation: fly2 30s linear infinite;
+        }
+
+        .aircraft-3 {
+            animation: fly3 20s linear infinite;
+        }
+
+        .aircraft-4 {
+            animation: fly4 35s linear infinite;
+        }
+
+        .aircraft-5 {
+            animation: fly5 28s linear infinite;
+        }
+
+        @keyframes fly1 {
+            from { transform: translate(-100px, 100px) rotate(10deg); }
+            to { transform: translate(calc(100vw + 100px), 300px) rotate(10deg); }
+        }
+
+        @keyframes fly2 {
+            from { transform: translate(calc(100vw + 100px), 200px) rotate(-10deg) scaleX(-1); }
+            to { transform: translate(-100px, 100px) rotate(-10deg) scaleX(-1); }
+        }
+
+        @keyframes fly3 {
+            from { transform: translate(-100px, 400px) rotate(5deg); }
+            to { transform: translate(calc(100vw + 100px), 200px) rotate(5deg); }
+        }
+
+        @keyframes fly4 {
+            from { transform: translate(50vw, -100px) rotate(90deg); }
+            to { transform: translate(50vw, calc(100vh + 100px)) rotate(90deg); }
+        }
+
+        @keyframes fly5 {
+            0% { transform: translate(-100px, 50vh) rotate(0deg); }
+            25% { transform: translate(25vw, 30vh) rotate(10deg); }
+            50% { transform: translate(50vw, 60vh) rotate(-10deg); }
+            75% { transform: translate(75vw, 40vh) rotate(5deg); }
+            100% { transform: translate(calc(100vw + 100px), 50vh) rotate(0deg); }
+        }
+
+        /* Loading Animation */
+        .loading {
+            display: inline-block;
+            width: 30px;
+            height: 30px;
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #FFD700;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Responsive Design */
+        @media (max-width: 1200px) {
+            .container {
+                flex-direction: column;
+            }
+            
+            .left-panel {
+                width: 100%;
+                flex-direction: row;
+                overflow-x: auto;
+            }
+            
+            .right-panel {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Dynamic Weather Backgrounds -->
+    <div class="weather-bg sunny active" id="bg1"></div>
+    <div class="weather-bg cloudy" id="bg2"></div>
+    <div class="weather-bg rainy" id="bg3"></div>
+    <div class="weather-bg sunset" id="bg4"></div>
+    <div class="weather-bg night" id="bg5"></div>
+    <div class="weather-bg aurora" id="bg6"></div>
+
+    <!-- Particle Effects -->
+    <div class="particles" id="particles"></div>
+
+    <!-- Animated Aircraft -->
+    <div class="aircraft aircraft-1">✈️</div>
+    <div class="aircraft aircraft-2">🛩️</div>
+    <div class="aircraft aircraft-3">🚁</div>
+    <div class="aircraft aircraft-4">🛫</div>
+    <div class="aircraft aircraft-5">🛬</div>
+
+    <!-- Header -->
+    <div class="header">
+        <h1>RAFTAAR</h1>
+    </div>
+
+    <!-- Main Container -->
+    <div class="container">
+        <!-- Left Panel - Features -->
+        <div class="left-panel">
+            <div class="feature-item" onclick="openFeaturePage('Feature 1')">
+                <span>Feature 1</span>
+            </div>
+            <div class="feature-item" onclick="openFeaturePage('Feature 2')">
+                <span>Feature 2</span>
+            </div>
+            <div class="feature-item" onclick="openFeaturePage('Feature 3')">
+                <span>Feature 3</span>
+            </div>
+            <div class="feature-item" onclick="openFeaturePage('Feature 4')">
+                <span>Feature 4</span>
+            </div>
+            <div class="feature-item" onclick="openFeaturePage('Feature 5')">
+                <span>Feature 5</span>
+            </div>
+            <div class="feature-item" onclick="openFeaturePage('Feature 6')">
+                <span>Feature 6</span>
+            </div>
+        </div>
+
+        <!-- Center Panel - Map -->
+        <div class="center-panel">
+            <div class="map-container">
+                <div id="map"></div>
+            </div>
+            <div class="location-info">
+                <strong>📍 Live GPS Tracking</strong>
+                <div id="locationText" style="margin-top: 10px;">Initializing GPS satellite connection...</div>
+            </div>
+        </div>
+
+        <!-- Right Panel - Camera -->
+        <div class="right-panel">
+            <div class="camera-container">
+                <video id="webcam" style="display: none;"></video>
+                <div class="camera-off" id="cameraOff">
+                    <div class="camera-icon">📷</div>
+                    <div>Camera Offline</div>
+                </div>
+            </div>
+            <button class="camera-btn" id="cameraToggle" onclick="toggleCamera()">Turn On</button>
+        </div>
+    </div>
+
+    <script>
+        let map;
+        let marker;
+        let watchId;
+        let cameraStream = null;
+        let isCameraOn = false;
+        let currentBg = 1;
+        let userLat = 0;
+        let userLng = 0;
+
+        // Weather Background Rotation
+        function rotateBackgrounds() {
+            const backgrounds = document.querySelectorAll('.weather-bg');
+            backgrounds.forEach(bg => bg.classList.remove('active'));
+            
+            currentBg = (currentBg % 6) + 1;
+            document.getElementById(`bg${currentBg}`).classList.add('active');
+        }
+
+        // Rotate backgrounds every 8 seconds
+        setInterval(rotateBackgrounds, 8000);
+
+        // Create floating particles
+        function createParticles() {
+            const particlesContainer = document.getElementById('particles');
+            for (let i = 0; i < 50; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.left = Math.random() * 100 + '%';
+                particle.style.animationDelay = Math.random() * 20 + 's';
+                particle.style.animationDuration = (15 + Math.random() * 10) + 's';
+                particlesContainer.appendChild(particle);
+            }
+        }
+
+        // Initialize Map
+        function initMap() {
+            const mapDiv = document.getElementById('map');
+            
+            // Create custom map interface
+            mapDiv.innerHTML = `
+                <div style="width: 100%; height: 100%; position: relative; background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);">
+                    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center;">
+                        <div style="width: 300px; height: 300px; position: relative;">
+                            <!-- Radar circles -->
+                            <div style="position: absolute; width: 100%; height: 100%; border: 2px solid rgba(255,255,255,0.2); border-radius: 50%; animation: radar 3s linear infinite;"></div>
+                            <div style="position: absolute; width: 80%; height: 80%; top: 10%; left: 10%; border: 2px solid rgba(255,255,255,0.3); border-radius: 50%; animation: radar 3s linear infinite 0.5s;"></div>
+                            <div style="position: absolute; width: 60%; height: 60%; top: 20%; left: 20%; border: 2px solid rgba(255,255,255,0.4); border-radius: 50%; animation: radar 3s linear infinite 1s;"></div>
+                            <div style="position: absolute; width: 40%; height: 40%; top: 30%; left: 30%; border: 2px solid rgba(255,255,255,0.5); border-radius: 50%; animation: radar 3s linear infinite 1.5s;"></div>
+                            
+                            <!-- Center point -->
+                            <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);">
+                                <div style="width: 20px; height: 20px; background: #FFD700; border-radius: 50%; box-shadow: 0 0 20px #FFD700; animation: pulse 2s infinite;"></div>
+                            </div>
+                            
+                            <!-- Scanning line -->
+                            <div style="position: absolute; width: 150px; height: 2px; background: linear-gradient(90deg, transparent, #00ff00, transparent); top: 50%; left: 50%; transform-origin: left center; animation: scan 3s linear infinite;"></div>
+                        </div>
+                        <div style="color: white; margin-top: 30px; font-size: 18px; font-weight: bold; text-transform: uppercase; letter-spacing: 2px;">
+                            GPS Active
+                        </div>
+                        <div style="color: #FFD700; margin-top: 10px;" id="mapCoords">
+                            Scanning...
+                        </div>
+                    </div>
+                    
+                    <style>
+                        @keyframes radar {
+                            0% { transform: scale(0.5); opacity: 1; }
+                            100% { transform: scale(1.5); opacity: 0; }
+                        }
+                        @keyframes scan {
+                            from { transform: rotate(0deg); }
+                            to { transform: rotate(360deg); }
+                        }
+                    </style>
+                </div>
+            `;
+            
+            startLocationTracking();
+        }
+
+        // Location Tracking
+        function startLocationTracking() {
+            if (navigator.geolocation) {
+                watchId = navigator.geolocation.watchPosition(
+                    (position) => {
+                        userLat = position.coords.latitude;
+                        userLng = position.coords.longitude;
+                        
+                        document.getElementById('locationText').innerHTML = 
+                            `<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px;">
+                                <div>Latitude: <span style="color: #FFD700;">${userLat.toFixed(6)}°</span></div>
+                                <div>Longitude: <span style="color: #FFD700;">${userLng.toFixed(6)}°</span></div>
+                                <div>Accuracy: <span style="color: #50E3C2;">${position.coords.accuracy.toFixed(0)}m</span></div>
+                                <div>Status: <span style="color: #00ff00;">● Online</span></div>
+                            </div>`;
+                        
+                        const mapCoords = document.getElementById('mapCoords');
+                        if (mapCoords) {
+                            mapCoords.innerHTML = `${userLat.toFixed(4)}°, ${userLng.toFixed(4)}°`;
+                        }
+                    },
+                    (error) => {
+                        document.getElementById('locationText').innerHTML = 
+                            `<div style="color: #ff6b6b;">⚠ GPS Error: ${error.message}</div>`;
+                    },
+                    {
+                        enableHighAccuracy: true,
+                        maximumAge: 0,
+                        timeout: 5000
+                    }
+                );
+            } else {
+                document.getElementById('locationText').innerHTML = 
+                    '<div style="color: #ff6b6b;">⚠ GPS not supported by browser</div>';
+            }
+        }
+
+        // Camera Toggle
+        async function toggleCamera() {
+            const video = document.getElementById('webcam');
+            const cameraOff = document.getElementById('cameraOff');
+            const button = document.getElementById('cameraToggle');
+            
+            if (!isCameraOn) {
+                try {
+                    cameraStream = await navigator.mediaDevices.getUserMedia({ 
+                        video: { 
+                            width: { ideal: 1280 },
+                            height: { ideal: 720 }
+                        } 
+                    });
+                    video.srcObject = cameraStream;
+                    video.style.display = 'block';
+                    cameraOff.style.display = 'none';
+                    button.textContent = 'Turn Off';
+                    button.classList.add('off');
+                    isCameraOn = true;
+                } catch (err) {
+                    alert('Camera access denied: ' + err.message);
+                }
+            } else {
+                if (cameraStream) {
+                    cameraStream.getTracks().forEach(track => track.stop());
+                }
+                video.style.display = 'none';
+                cameraOff.style.display = 'flex';
+                button.textContent = 'Turn On';
+                button.classList.remove('off');
+                isCameraOn = false;
+            }
+        }
+
+        // Open Feature Page
+        function openFeaturePage(feature) {
+            const newWindow = window.open('', '_blank');
+            newWindow.document.write(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>${feature} - RAFTAAR</title>
+                    <style>
+                        * {
+                            margin: 0;
+                            padding: 0;
+                            box-sizing: border-box;
+                        }
+                        body {
+                            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                            min-height: 100vh;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                        }
+                        .container {
+                            background: rgba(255, 255, 255, 0.95);
+                            padding: 60px;
+                            border-radius: 30px;
+                            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+                            text-align: center;
+                            backdrop-filter: blur(10px);
+                            animation: slideIn 0.5s ease;
+                        }
+                        @keyframes slideIn {
+                            from {
+                                transform: translateY(-50px);
+                                opacity: 0;
+                            }
+                            to {
+                                transform: translateY(0);
+                                opacity: 1;
+                            }
+                        }
+                        h1 {
+                            color: #764ba2;
+                            margin-bottom: 20px;
+                            font-size: 2.5em;
+                            text-transform: uppercase;
+                            letter-spacing: 3px;
+                        }
+                        p {
+                            color: #666;
+                            font-size: 1.5em;
+                            margin: 20px 0;
+                        }
+                        .icon {
+                            font-size: 60px;
+                            margin: 20px 0;
+                            animation: rotate 2s linear infinite;
+                        }
+                        @keyframes rotate {
+                            from { transform: rotate(0deg); }
+                            to { transform: rotate(360deg); }
+                        }
+                        .back-btn {
+                            margin-top: 30px;
+                            padding: 15px 40px;
+                            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                            color: white;
+                            border: none;
+                            border-radius: 25px;
+                            font-size: 1.1em;
+                            cursor: pointer;
+                            transition: transform 0.3s;
+                        }
+                        .back-btn:hover {
+                            transform: scale(1.05);
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        <div class="icon">⚙️</div>
+                        <h1>${feature}</h1>
+                        <p>Work to be done</p>
+                        <p style="font-size: 1em; color: #999;">This feature is under development</p>
+                        <button class="back-btn" onclick="window.close()">Close Window</button>
+                    </div>
+                </body>
+                </html>
+            `);
+        }
+
+        // Initialize everything when page loads
+        window.onload = function() {
+            createParticles();
+            initMap();
+        };
+    </script>
+</body>
+</html>
